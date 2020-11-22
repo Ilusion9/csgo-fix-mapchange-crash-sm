@@ -27,17 +27,20 @@ public void OnMapStart()
 
 public Action CommandListener_ChangeLevel(int client, const char[] command, int args)
 {
-	if (client) // command sent by clients
+	// command sent by clients
+	if (client)
 	{
 		return Plugin_Continue;
 	}
 	
-	if (g_ReconnectingClients) // block map changes while reconnecting the clients
+	// block map changes while reconnecting all clients
+	if (g_ReconnectingClients)
 	{
 		return Plugin_Handled;
 	}
 	
-	if (g_BlockMapChange) // change the map
+	// map is changing after reconnecting all clients
+	if (g_BlockMapChange)
 	{
 		g_BlockMapChange = false;
 		return Plugin_Continue;
@@ -55,26 +58,25 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 		} 
 	}
 	
-	// change the map after 0.10 seconds
-	char buffer[256];
+	// delay the map change
+	char buffer[PLATFORM_MAX_PATH];
 	GetCmdArgString(buffer, sizeof(buffer));
 	Format(buffer, sizeof(buffer), "%s %s", command, buffer);
 	
 	DataPack pk = new DataPack();
 	pk.WriteString(buffer);
 	
-	CreateTimer(0.10, Timer_ForceMapChange, pk, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(0.2, Timer_ForceMapChange, pk, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Handled;
 }
 
 public Action Timer_ForceMapChange(Handle timer, DataPack pk)
 {
-	char buffer[256];
 	pk.Reset();
+	char buffer[PLATFORM_MAX_PATH];
 	pk.ReadString(buffer, sizeof(buffer));
 	delete pk;
 	
 	g_ReconnectingClients = false;
 	ServerCommand(buffer);
-	return Plugin_Stop;
 }
