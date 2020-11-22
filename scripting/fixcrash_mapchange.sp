@@ -6,7 +6,7 @@ public Plugin myinfo =
 	name = "Fix Mapchange Crash",
 	author = "Ilusion9",
 	description = "Fix clients crash on map change.",
-	version = "1.0",
+	version = "1.1",
 	url = "https://github.com/Ilusion9/"
 };
 
@@ -27,7 +27,6 @@ public void OnMapStart()
 
 public Action CommandListener_ChangeLevel(int client, const char[] command, int args)
 {
-	// command sent by clients
 	if (client)
 	{
 		return Plugin_Continue;
@@ -39,7 +38,7 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 		return Plugin_Handled;
 	}
 	
-	// map is changing after reconnecting all clients
+	// allow map changes after reconnecting all clients
 	if (g_BlockMapChange)
 	{
 		g_BlockMapChange = false;
