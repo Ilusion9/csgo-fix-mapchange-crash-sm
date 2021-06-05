@@ -60,13 +60,13 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 	Format(arguments, sizeof(arguments), "%s %s", command, arguments);
 	
 	DataPack pk;
-	CreateDataTimer(0.2, Timer_ForceMapChange, pk, TIMER_FLAG_NO_MAPCHANGE);
+	CreateDataTimer(0.2, Timer_ForceChangeLevel, pk, TIMER_FLAG_NO_MAPCHANGE);
 	pk.WriteString(arguments);
 	
 	return Plugin_Handled;
 }
 
-public Action Timer_ForceMapChange(Handle timer, DataPack pk)
+public Action Timer_ForceChangeLevel(Handle timer, DataPack pk)
 {
 	pk.Reset();
 	char arguments[PLATFORM_MAX_PATH];
