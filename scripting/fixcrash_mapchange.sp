@@ -10,10 +10,10 @@ public Plugin myinfo =
 	url = "https://github.com/Ilusion9/"
 };
 
-#define MAP_RECONNECTING_CLIENTS                (1 << 0)
-#define MAP_ALLOW_NORMAL_CHANGE                 (1 << 1)
+#define MAPCHANGE_RECONNECTING_CLIENTS                (1 << 0)
+#define MAPCHANGE_ALLOW_NORMAL_CHANGE                 (1 << 1)
 
-int g_MapFlags;
+int g_MapChangeFlags;
 
 public void OnPluginStart() 
 { 
@@ -23,7 +23,7 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	g_MapFlags = 0;
+	g_MapChangeFlags = 0;
 }
 
 public Action CommandListener_ChangeLevel(int client, const char[] command, int args)
@@ -33,19 +33,19 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 		return Plugin_Continue;
 	}
 	
-	if (view_as<bool>(g_MapFlags & MAP_RECONNECTING_CLIENTS))
+	if (view_as<bool>(g_MapChangeFlags & MAPCHANGE_RECONNECTING_CLIENTS))
 	{
 		return Plugin_Handled;
 	}
 	
-	if (view_as<bool>(g_MapFlags & MAP_ALLOW_NORMAL_CHANGE))
+	if (view_as<bool>(g_MapChangeFlags & MAPCHANGE_ALLOW_NORMAL_CHANGE))
 	{
-		g_MapFlags &= ~MAP_ALLOW_NORMAL_CHANGE;
+		g_MapChangeFlags &= ~MAPCHANGE_ALLOW_NORMAL_CHANGE;
 		return Plugin_Continue;
 	}
 	
-	g_MapFlags |= MAP_ALLOW_NORMAL_CHANGE;
-	g_MapFlags |= MAP_RECONNECTING_CLIENTS;
+	g_MapChangeFlags |= MAPCHANGE_ALLOW_NORMAL_CHANGE;
+	g_MapChangeFlags |= MAPCHANGE_RECONNECTING_CLIENTS;
 	
 	for (int i = 1; i <= MaxClients; i++) 
 	{
@@ -72,6 +72,6 @@ public Action Timer_ForceMapChange(Handle timer, DataPack pk)
 	char arguments[PLATFORM_MAX_PATH];
 	pk.ReadString(arguments, sizeof(arguments));
 	
-	g_MapFlags &= ~MAP_RECONNECTING_CLIENTS;
+	g_MapChangeFlags &= ~MAPCHANGE_RECONNECTING_CLIENTS;
 	ServerCommand(arguments);
 }
