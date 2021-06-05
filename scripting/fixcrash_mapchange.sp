@@ -5,7 +5,7 @@ public Plugin myinfo =
 {
 	name = "Fix Mapchange Crash",
 	author = "Ilusion9",
-	description = "Fix clients crash on map change.",
+	description = "Fix players crash on map change.",
 	version = "1.2",
 	url = "https://github.com/Ilusion9/"
 };
