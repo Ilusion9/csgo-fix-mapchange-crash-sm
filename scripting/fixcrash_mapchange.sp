@@ -1,17 +1,19 @@
-#include <sourcemod> 
 #pragma newdecls required
+#include <sourcemod> 
 
 public Plugin myinfo =
 {
 	name = "Fix Mapchange Crash",
 	author = "Ilusion9",
 	description = "Fix clients crash on map change.",
-	version = "1.1",
+	version = "1.2",
 	url = "https://github.com/Ilusion9/"
 };
 
-bool g_BlockMapChange;
-bool g_ReconnectingClients;
+#define MAP_RECONNECTING_CLIENTS                (1 << 0)
+#define MAP_ALLOW_NORMAL_CHANGE                 (1 << 1)
+
+int g_MapFlags;
 
 public void OnPluginStart() 
 { 
@@ -21,8 +23,7 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	g_BlockMapChange = false;
-	g_ReconnectingClients = false;
+	g_MapFlags = 0;
 }
 
 public Action CommandListener_ChangeLevel(int client, const char[] command, int args)
@@ -32,23 +33,20 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 		return Plugin_Continue;
 	}
 	
-	// block map changes while reconnecting all clients
-	if (g_ReconnectingClients)
+	if (view_as<bool>(g_MapFlags & MAP_RECONNECTING_CLIENTS))
 	{
 		return Plugin_Handled;
 	}
 	
-	// allow map changes after reconnecting all clients
-	if (g_BlockMapChange)
+	if (view_as<bool>(g_MapFlags & MAP_ALLOW_NORMAL_CHANGE))
 	{
-		g_BlockMapChange = false;
+		g_MapFlags &= ~MAP_ALLOW_NORMAL_CHANGE;
 		return Plugin_Continue;
 	}
 	
-	g_BlockMapChange = true;
-	g_ReconnectingClients = true;
+	g_MapFlags |= MAP_ALLOW_NORMAL_CHANGE;
+	g_MapFlags |= MAP_RECONNECTING_CLIENTS;
 	
-	// reconnect all clients
 	for (int i = 1; i <= MaxClients; i++) 
 	{
 		if (IsClientConnected(i) && !IsFakeClient(i))
@@ -57,25 +55,23 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 		} 
 	}
 	
-	// delay the map change
-	char buffer[PLATFORM_MAX_PATH];
-	GetCmdArgString(buffer, sizeof(buffer));
-	Format(buffer, sizeof(buffer), "%s %s", command, buffer);
+	char arguments[PLATFORM_MAX_PATH];
+	GetCmdArgString(arguments, sizeof(arguments));
+	Format(arguments, sizeof(arguments), "%s %s", command, arguments);
 	
-	DataPack pk = new DataPack();
-	pk.WriteString(buffer);
+	DataPack pk;
+	CreateDataTimer(0.2, Timer_ForceMapChange, pk, TIMER_FLAG_NO_MAPCHANGE);
+	pk.WriteString(arguments);
 	
-	CreateTimer(0.2, Timer_ForceMapChange, pk, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Handled;
 }
 
 public Action Timer_ForceMapChange(Handle timer, DataPack pk)
 {
 	pk.Reset();
-	char buffer[PLATFORM_MAX_PATH];
-	pk.ReadString(buffer, sizeof(buffer));
-	delete pk;
+	char arguments[PLATFORM_MAX_PATH];
+	pk.ReadString(arguments, sizeof(arguments));
 	
-	g_ReconnectingClients = false;
-	ServerCommand(buffer);
+	g_MapFlags &= ~MAP_RECONNECTING_CLIENTS;
+	ServerCommand(arguments);
 }
