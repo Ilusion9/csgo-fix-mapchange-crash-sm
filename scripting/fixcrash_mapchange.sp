@@ -1,29 +1,43 @@
+#pragma semicolon 1
 #pragma newdecls required
+
 #include <sourcemod> 
 
 public Plugin myinfo =
 {
-	name = "Fix Mapchange Crash",
+	name = "Reconnect Players",
 	author = "Ilusion9",
-	description = "Fix players crash on map change.",
-	version = "1.2",
+	description = "Reconnect players on map change.",
+	version = "1.0",
 	url = "https://github.com/Ilusion9/"
 };
 
-#define MAPCHANGE_RECONNECTING_CLIENTS                (1 << 0)
-#define MAPCHANGE_ALLOW_NORMAL_CHANGE                 (1 << 1)
+char g_ChangeLevelArgs[PLATFORM_MAX_PATH];
 
-int g_MapChangeFlags;
-
-public void OnPluginStart() 
-{ 
-	AddCommandListener(CommandListener_ChangeLevel, "map");
+public void OnPluginStart()
+{
+	AddCommandListener(CommandListener_Map, "map");
 	AddCommandListener(CommandListener_ChangeLevel, "changelevel");
 }
 
 public void OnMapStart()
 {
-	g_MapChangeFlags = 0;
+	g_ChangeLevelArgs[0] = 0;
+}
+
+public Action CommandListener_Map(int client, const char[] command, int args)
+{
+	if (client)
+	{
+		return Plugin_Continue;
+	}
+	
+	if (g_ChangeLevelArgs[0])
+	{
+		return Plugin_Handled;
+	}
+	
+	return Plugin_Continue;
 }
 
 public Action CommandListener_ChangeLevel(int client, const char[] command, int args)
@@ -33,34 +47,35 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 		return Plugin_Continue;
 	}
 	
-	if (view_as<bool>(g_MapChangeFlags & MAPCHANGE_RECONNECTING_CLIENTS))
+	char arguments[PLATFORM_MAX_PATH];
+	GetCmdArgString(arguments, sizeof(arguments));
+	
+	if (g_ChangeLevelArgs[0])
 	{
+		if (StrEqual(arguments, g_ChangeLevelArgs, true))
+		{
+			return Plugin_Continue;
+		}
+		
 		return Plugin_Handled;
 	}
 	
-	if (view_as<bool>(g_MapChangeFlags & MAPCHANGE_ALLOW_NORMAL_CHANGE))
+	strcopy(g_ChangeLevelArgs, sizeof(g_ChangeLevelArgs), arguments);
+	
+	for (int i = 1; i <= MaxClients; i++)
 	{
-		g_MapChangeFlags &= ~MAPCHANGE_ALLOW_NORMAL_CHANGE;
-		return Plugin_Continue;
+		if (!IsClientInGame(i) || IsFakeClient(i))
+		{
+			continue;
+		}
+		
+		ClientCommand(i, "disconnect;retry");
 	}
-	
-	g_MapChangeFlags |= MAPCHANGE_ALLOW_NORMAL_CHANGE;
-	g_MapChangeFlags |= MAPCHANGE_RECONNECTING_CLIENTS;
-	
-	for (int i = 1; i <= MaxClients; i++) 
-	{
-		if (IsClientConnected(i) && !IsFakeClient(i))
-		{                 
-			ClientCommand(i, "disconnect;retry"); 
-		} 
-	}
-	
-	char arguments[PLATFORM_MAX_PATH];
-	GetCmdArgString(arguments, sizeof(arguments));
-	Format(arguments, sizeof(arguments), "%s %s", command, arguments);
 	
 	DataPack pk;
 	CreateDataTimer(0.2, Timer_ForceChangeLevel, pk, TIMER_FLAG_NO_MAPCHANGE);
+	
+	pk.WriteString(command);
 	pk.WriteString(arguments);
 	
 	return Plugin_Handled;
@@ -69,9 +84,12 @@ public Action CommandListener_ChangeLevel(int client, const char[] command, int 
 public Action Timer_ForceChangeLevel(Handle timer, DataPack pk)
 {
 	pk.Reset();
+	
+	char command[256];
+	pk.ReadString(command, sizeof(command));
+	
 	char arguments[PLATFORM_MAX_PATH];
 	pk.ReadString(arguments, sizeof(arguments));
 	
-	g_MapChangeFlags &= ~MAPCHANGE_RECONNECTING_CLIENTS;
-	ServerCommand(arguments);
+	ServerCommand("%s %s", command, arguments);
 }
